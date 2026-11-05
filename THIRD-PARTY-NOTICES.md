@@ -1,0 +1,9 @@
+# Source, fiction, assets and dependencies
+
+Original The Current application code, wordmark/wave motif, geometric SVG illustrations, synthetic story and demo records are licensed **AGPL-3.0-only**. Copyright 2026 Devon Alan Akins. Official unmodified AGPL v3 text is in LICENSE. Source files contain SPDX notices. This license does not claim or grant rights to Cristy's private materials, client names/data, or third-party franchises. None of those assets is included.
+
+The interface uses system Georgia/Arial/Helvetica font stacks and does not redistribute font files or call a font CDN. Private SVG is generated from original geometric paths, not externally hosted imagery. No narration, music or playable video is distributed. Print/PDF export uses the browser print dialog.
+
+There are zero runtime npm packages. Locked development tools include TypeScript (Apache-2.0), Node types (MIT), ESLint/typescript-eslint (MIT), Prettier (MIT), Playwright (Apache-2.0) and Axe Core tooling (MPL-2.0; wrapper Apache-2.0). Transitive package licenses remain in their installed package notices; package-lock.json pins resolved versions/integrity. Node/SQLite, the operating system, browsers and their bundled components retain their own licenses. AGPL source obligations remain applicable when the application is modified and made available over a network.
+
+A minimatch >=11.0.1 override addresses the known glob amplification advisory reported by npm audit in the initially resolved development-only lint chain. Browser tooling is pinned to the reproducibly downloadable Playwright 1.56.1 candidate; this does not make an old browser appropriate for unrestricted web browsing. Tests use only localhost synthetic content. Review/audit dependencies again before an actual release; a clean npm audit is not a comprehensive supply-chain or license certification.
