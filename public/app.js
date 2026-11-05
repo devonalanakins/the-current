@@ -7,11 +7,14 @@ if (exchange && location.hash.length > 1) {
   exchange.requestSubmit();
 }
 for (const image of document.querySelectorAll("img")) {
-  image.addEventListener("error", () => {
+  const showFallback = () => {
     image.hidden = true;
     const fallback = image.parentElement.querySelector(".image-fallback");
     if (fallback) fallback.hidden = false;
-  });
+  };
+  image.addEventListener("error", showFallback);
+  // Failed images can finish before this deferred enhancement script runs.
+  if (image.complete && image.naturalWidth === 0) showFallback();
 }
 const clock = document.querySelector("[data-elapsed]");
 if (clock) {
