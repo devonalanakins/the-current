@@ -244,8 +244,6 @@ export class Current {
       "approve-evidence",
       "release",
     ].includes(action);
-    const b = sessionAction ? this.briefing(id) : undefined;
-    const v = b ? this.version(b.version) : this.version(Number(id));
     const roles: Role[] = [
       "start",
       "pause",
@@ -269,10 +267,13 @@ export class Current {
           ].includes(action)
         ? ["approver"]
         : ["producer"];
-    this.allow(actor, v.campaign, roles);
-    if (roles[0] === "facilitator" && b) this.assigned(actor, b);
     const target = hash(JSON.stringify({ action, id, revision, input }));
     return this.store.transaction(() => {
+      // Read authority and state under the same writer lock as the transition.
+      const b = sessionAction ? this.briefing(id) : undefined;
+      const v = b ? this.version(b.version) : this.version(Number(id));
+      this.allow(actor, v.campaign, roles);
+      if (roles[0] === "facilitator" && b) this.assigned(actor, b);
       const receipt = this.store.get<{ target: string }>(
         "SELECT target FROM receipts WHERE actor=? AND key=?",
         actor.id,
