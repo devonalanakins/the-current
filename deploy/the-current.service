@@ -1,0 +1,27 @@
+[Unit]
+Description=The Current private synthetic review
+After=network.target
+
+[Service]
+Type=simple
+User=the-current
+Group=the-current
+WorkingDirectory=/opt/the-current/current
+EnvironmentFile=/etc/the-current/staging.env
+ExecStart=/usr/bin/node dist/server.js
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/the-current/synthetic-staging
+RestrictAddressFamilies=AF_INET AF_UNIX
+CapabilityBoundingSet=
+LockPersonality=true
+LimitNOFILE=1024
+
+[Install]
+WantedBy=multi-user.target

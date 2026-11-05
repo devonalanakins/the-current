@@ -1,0 +1,11 @@
+node_modules
+dist
+data
+artifacts
+test-results
+playwright-report
+LICENSE
+package-lock.json
+docs/experience-v0.3.md
+docs/authorization-and-release-v0.3.md
+docs/visual-system-v0.3.md
