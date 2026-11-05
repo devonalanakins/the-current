@@ -110,11 +110,16 @@ test("four audiences complete the real lifecycle; responsive, keyboard, recovery
     ).toBeVisible();
     await capture(pages.participant, "invitation");
     await pages.participant.route("**/media/**", (route) => route.abort());
+    await pages.participant.route("**/app.js", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await route.continue();
+    });
     await pages.participant.reload();
     await expect(
       pages.participant.getByText("The shoreline is quiet.", { exact: false }),
     ).toBeVisible();
     await pages.participant.unroute("**/media/**");
+    await pages.participant.unroute("**/app.js");
     await pages.participant.reload();
     // Keyboard can enter a native action; no role selector or frontend state grants access.
     await pages.participant.keyboard.press("Tab");
