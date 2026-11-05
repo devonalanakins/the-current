@@ -54,3 +54,42 @@ test("migration replay, transaction rollback and live WAL snapshot restore retai
   restored.close();
   rmSync(dir, { recursive: true });
 });
+
+test("separate concurrent Node processes serialize version/grant reads and release writes", async () => {
+  const { spawn } = await import("node:child_process");
+  const { token } = await import("../dist/store.js");
+  const dir = mkdtempSync(join(tmpdir(), "current-race-"));
+  const f = fixture(join(dir, "state.sqlite"));
+  publish(f);
+  complete(f);
+  command(f, "rowan", "prepare", "demo-briefing");
+  command(f, "ellis", "approve-evidence", "demo-briefing");
+  const key = token();
+  const run = (key) =>
+    new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [
+        "tests/release-worker.mjs",
+        join(dir, "state.sqlite"),
+        key,
+      ]);
+      let out = "";
+      child.stdout.on("data", (d) => (out += d));
+      child.on("error", reject);
+      child.on("close", (code) =>
+        code === 0 ? resolve(JSON.parse(out)) : reject(Error("worker failed")),
+      );
+    });
+  try {
+    const results = await Promise.all([run(key), run(key), run(token())]);
+    assert.ok(results.some((r) => r.status === 200));
+    assert.ok(results.some((r) => r.status === 409));
+    assert.equal(f.store.get("SELECT count(*) n FROM releases").n, 1);
+    assert.equal(
+      f.store.get("SELECT count(*) n FROM audit WHERE action='release'").n,
+      1,
+    );
+  } finally {
+    f.store.close();
+    rmSync(dir, { recursive: true });
+  }
+});
