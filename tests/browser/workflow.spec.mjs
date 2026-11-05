@@ -309,14 +309,17 @@ test("native keyboard sign-in and text-only invitation work without JavaScript",
   try {
     const page = await context.newPage();
     await page.goto(config.origin + "/login");
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
-    await expect(page.getByLabel("Username", { exact: true })).toBeFocused();
+    const username = page.getByLabel("Username", { exact: true });
+    // WebKit may tab to form controls before links, depending on host preferences.
+    // Prove keyboard reachability without assuming a fixed number of tab stops.
+    for (let i = 0; i < 12; i++) {
+      await page.keyboard.press("Tab");
+      if (await username.evaluate((n) => n === document.activeElement)) break;
+    }
+    await expect(username).toBeFocused();
     await page.keyboard.type("rowan");
     await page.keyboard.press("Tab");
     await page.keyboard.type(f.credentials.rowan);
-    await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
     await expect(
       page.getByRole("heading", { name: "Make the story ready." }),
