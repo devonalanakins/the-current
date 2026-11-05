@@ -323,3 +323,29 @@ test("secure-mode session cookie flags and live facilitator grant revocation", a
     f.store.close();
   }
 });
+
+test("health checks database readiness without leaking failures; closed invitations need no account", async () => {
+  const f = fixture(),
+    host = await listen(f),
+    c = new Client(host.origin);
+  try {
+    const r = await c.request("/health");
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get("x-robots-tag"), /noarchive/);
+    publish(f);
+    const raw = command(f, "mira", "invite", "demo-briefing").issued;
+    await c.invite(raw);
+    command(f, "mira", "revoke-invites", "demo-briefing");
+    const closed = await c.request("/invitation");
+    assert.equal(closed.status, 410);
+    const html = await closed.text();
+    assert.match(html, /does not require an account/);
+    assert.doesNotMatch(html, /Mara|private stage|name="password"/);
+    f.store.close();
+    const unavailable = await c.request("/health");
+    assert.equal(unavailable.status, 503);
+    assert.deepEqual(await unavailable.json(), { status: "unavailable" });
+  } finally {
+    await host.close();
+  }
+});

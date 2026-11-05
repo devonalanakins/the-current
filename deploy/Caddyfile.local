@@ -1,0 +1,11 @@
+# Optional local/private HTTPS termination; Caddy is not installed by this repo.
+# Listen only on loopback. No public ACME, DNS changes or public listener.
+{
+    admin off
+    auto_https disable_redirects
+}
+https://localhost:3443 {
+    bind 127.0.0.1
+    tls internal
+    reverse_proxy 127.0.0.1:3000
+}

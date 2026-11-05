@@ -3,6 +3,8 @@ import { Store, password, token, now } from "./store.js";
 import { Current } from "./domain.js";
 import { story } from "./content.js";
 import { writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { runtimeConfig, bindEnvironment } from "./config.js";
 import { pathToFileURL } from "node:url";
 export function seed(store: Store) {
   if (store.get("SELECT id FROM users LIMIT 1"))
@@ -55,21 +57,25 @@ if (
 ) {
   if (process.env.NODE_ENV === "production")
     throw new Error("Synthetic seed is disabled in production.");
-  if (existsSync("data/demo-credentials.json"))
+  process.umask(0o077);
+  const config = runtimeConfig();
+  if (config.environment === "production")
+    throw new Error("Synthetic seed is disabled in production.");
+  const handoff = join(dirname(config.database), "demo-credentials.json");
+  if (existsSync(handoff) || existsSync(config.database))
     throw new Error(
       "Move the existing private credential handoff file before seeding a new database.",
     );
-  mkdirSync("data", { recursive: true, mode: 0o700 });
-  const path = process.env.CURRENT_DB ?? "data/current.sqlite";
-  const db = new Store(path);
+  mkdirSync(dirname(config.database), { recursive: true, mode: 0o700 });
+  const db = new Store(config.database);
   const credentials = seed(db);
+  bindEnvironment(db, config, true);
   db.close();
-  writeFileSync(
-    "data/demo-credentials.json",
-    JSON.stringify(credentials, null, 2),
-    { mode: 0o600, flag: "wx" },
-  );
+  writeFileSync(handoff, JSON.stringify(credentials, null, 2), {
+    mode: 0o600,
+    flag: "wx",
+  });
   console.log(
-    "Seeded synthetic draft campaign. Credentials: data/demo-credentials.json (local only). No invitation was sent or approved.",
+    "Seeded synthetic draft campaign. Private credentials are beside the database in demo-credentials.json. No invitation was sent or approved.",
   );
 }

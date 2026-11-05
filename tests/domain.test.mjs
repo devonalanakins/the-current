@@ -196,3 +196,76 @@ test("new approved correction creates a separate rehearsal and preserves prior e
   assert.equal(items[1].evidence, revised.evidence);
   f.store.close();
 });
+
+test("a contributor or evidence preparer cannot approve their own work after a role change", () => {
+  const f = fixture();
+  try {
+    // A second producer edits a story originally authored by Rowan.
+    f.store.run(
+      "INSERT INTO grants VALUES('ellis','quiet-buoy','producer',?,0)",
+      now() + 100000,
+    );
+    command(f, "ellis", "edit", "1", {
+      content: JSON.stringify({
+        ...f.app.story(f.app.version(1)),
+        teaser: "An original revised synthetic teaser.",
+      }),
+    });
+    command(f, "rowan", "review");
+    f.store.run(
+      "UPDATE grants SET revoked=1 WHERE user_id='ellis' AND role='producer'",
+    );
+    assert.throws(() => command(f, "ellis", "approve"), { status: 403 });
+    assert.equal(f.app.version(1).status, "IN_REVIEW");
+  } finally {
+    f.store.close();
+  }
+  const g = fixture();
+  try {
+    publish(g);
+    complete(g);
+    g.store.run(
+      "INSERT INTO grants VALUES('ellis','quiet-buoy','producer',?,0)",
+      now() + 100000,
+    );
+    command(g, "ellis", "prepare", "demo-briefing");
+    g.store.run(
+      "UPDATE grants SET revoked=1 WHERE user_id='ellis' AND role='producer'",
+    );
+    assert.throws(
+      () => command(g, "ellis", "approve-evidence", "demo-briefing"),
+      { status: 403 },
+    );
+    assert.equal(
+      g.store.get("SELECT state FROM evidence").state,
+      "READY_FOR_REVIEW",
+    );
+    assert.equal(
+      g.store.get("SELECT count(*) n FROM approvals WHERE scope='evidence'").n,
+      0,
+    );
+  } finally {
+    g.store.close();
+  }
+});
+
+test("pause freezes progress and rejects navigation/completion until explicit resume", () => {
+  const f = fixture();
+  try {
+    publish(f);
+    command(f, "mira", "start", "demo-briefing");
+    command(f, "mira", "pause", "demo-briefing");
+    const before = f.app.briefing("demo-briefing");
+    for (const action of ["next", "previous", "complete", "reveal"])
+      assert.throws(
+        () => command(f, "mira", action, "demo-briefing", { confirm: "yes" }),
+        { status: 409 },
+      );
+    assert.deepEqual(f.app.briefing("demo-briefing"), before);
+    command(f, "mira", "resume", "demo-briefing");
+    command(f, "mira", "next", "demo-briefing");
+    assert.equal(f.app.briefing("demo-briefing").stage, 1);
+  } finally {
+    f.store.close();
+  }
+});

@@ -22,6 +22,8 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm audit --audit-level=moderate
+      - run: npm run scan:secrets
+      - run: npm run release:package -- /tmp/the-current-release
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:browser
       - name: Record exact source identity

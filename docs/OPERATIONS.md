@@ -1,5 +1,7 @@
 # Operations and release gates
 
+**G1.5 update:** [PRIVATE-REVIEW.md](PRIVATE-REVIEW.md) governs the new environment validation, loopback supervisor/HTTPS templates, committed-source packaging, migration 002 and authenticated encrypted/quarantined recovery. The original plaintext restore-copy instructions below are historical context and must not be used for incident recovery. No external host is deployed.
+
 ## Configuration
 
 Node 24.10–24.x only. Run commands from the repository root so migration and public-asset paths resolve. `npm ci` installs locked development tools; `npm run build` emits server code into ignored `dist/`. The running server needs Node, `dist/`, `public/`, `migrations/`, and its private writable SQLite directory, not node_modules. Preserve the source and AGPL notice for recipients.
@@ -26,7 +28,7 @@ The command never overwrites. It uses a consistent SQLite snapshot while the ser
 
 For a restore/rollback rehearsal: stop the server; preserve its current database/WAL/SHM together; choose a new private restore filename; copy the validated snapshot there with mode 0600; start with `CURRENT_DB` pointing to that new file. Do not overwrite an open DB. Re-run tests and confirm expected version/release/grants before use. **A historical backup may resurrect revoked sessions or invitations:** an actual incident restore must expire all `logins`, set all `invitations.revoked=1`, reconcile current grants/revocations, and require fresh authentication before allowing access. Keep that recovery activity in the authorized incident record. This candidate test restores a synthetic historical snapshot intentionally.
 
-Current migration is additive initial schema only. No production database or destructive migration was touched. For future migrations: snapshot first, rehearse against a copy, compare row/version counts, and use an explicitly compatible application/schema pair for rollback. Do not infer that old binaries support new schemas.
+Migration 002 adds evidence preparer and content contributor attribution; existing pending evidence with unknown preparer identity fails closed. No production database or destructive migration was touched. For future migrations: snapshot first, rehearse against a copy, compare row/version counts, and use an explicitly compatible application/schema pair for rollback. Do not infer that old binaries support new schemas.
 
 ## Privileged access
 
@@ -34,6 +36,6 @@ Only a trusted local operator with DB access can manage users/grants. No role-ma
 
 ## Hosting, rollback and release
 
-No production, public preview, DNS, paid resources, email provider or customer access was provisioned. `/health` provides a minimal local readiness response only. This is a **local synthetic candidate**, not a public service. Do not bind it publicly for review without a separately approved access/TLS design. A self-hosted staging installation would use a private network, authenticated TLS reverse proxy, explicit trusted origin, least-privilege filesystem user, restricted egress, external process supervision and monitored encrypted backups. Real proxy/TLS configuration has not been tested here. No Cloudflare deployment configuration is supplied because this Node/SQLite implementation is not Worker-compatible.
+No production, public preview, DNS, paid resources, email provider or customer access was provisioned. `/health` queries the migration table and returns a generic readiness response. This is a **local synthetic candidate**, not a public service. Do not bind it publicly for review without a separately approved access/TLS design. A self-hosted staging installation would use a private network, authenticated TLS reverse proxy, explicit trusted origin, least-privilege filesystem user, restricted egress, external process supervision and monitored encrypted backups. Real proxy/TLS configuration has not been tested here. Portable systemd and optional local Caddy templates are now supplied; no Worker/D1 deployment or adapter is claimed.
 
 Production is blocked in code for the seeded organization. Removing this gate is not client approval. Before any client staging/launch: obtain Cristy's content/professional approval; resolve ownership/contract, hosting budget and private campaign IP; approve identity/access and privacy; verify real iPhone Safari/VoiceOver and no-coaching usability; test exact candidate backup/restore and revocation reconciliation on the approved host; verify real TLS/session settings; then obtain explicit release authorization. No staff/patient information belongs in this V1.

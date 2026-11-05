@@ -49,3 +49,15 @@ The browser suite uses fresh isolated identities and real native forms from prod
 - Client contract, hosting/privacy/IP rights, Cristy's content/visual sign-off, specialist review where required, and explicit production authorization remain external gates. No real invitation, appointment, client launch or deployment occurred.
 
 An engineer should trace one sensitive request from `server.ts` identity/CSRF to `domain.ts` scoped transition, then its parameterized SQL transaction, immutable receipt and audience projection. Review this trace and the negative tests before accepting a client release; AI-written explanation is not proof that a human operator understands it.
+
+## G1.5 author-performed falsification pass
+
+This continuation is not an independent human certification. A contributor/preparer self-approval gap was confirmed: only original version authorship was checked. Migration 002 now records all version contributors (including historical edit audit actors) and the actual evidence preparer. Transaction-bound approval denies their own work even after producer authority is revoked and approver authority remains. Existing pending evidence without preparer attribution is denied. Regressions exercise both paths; the original distinct-user lifecycle remains required.
+
+Other repairs: startup refuses absent DBs, unsafe bind/origin/port configuration and cross-environment reuse; production still refuses the synthetic organization. Unknown schema versions and changed recorded migration checksums fail closed. All HTTP responses now carry no-index/no-archive headers. Origin+CSRF remain enforced; `Referrer-Policy: same-origin` is retained because native form POST Origin behavior must work across browser engines. Fragment invitation exchange does not put credentials in server URLs. No new external assets or telemetry are introduced.
+
+Recovery now authenticates encrypted snapshots, refuses wrong keys/tampering/corruption/overwrites, removes sessions, revokes invitations, quarantines historical grants and pauses active sessions. Regression tests use a live WAL, real child-process restarts and fresh private output paths. This does not prove off-host custody or approved incident reconciliation. `scripts/scan-secrets.mjs` is only a narrow tracked-file/provider-token/private-key guard, not a general PII detector or secret certification.
+
+The mobile runner uses authoritative native form submissions, one-shot submission feedback, offline action refusal without replay, focus restoration, an explicit paused state and a persistent stage/timer strip. Paused navigation/completion are denied server-side. Browser checks cover width overflow, Axe rules, primary button height, sealed/released views and print; actual human/device tests remain separate gates.
+
+Private hosting remains NO-GO pending an approved host/private TLS/access path, actual host/proxy execution and physical iPhone/VoiceOver review. Supervisor/Caddy templates are preparation, not installed infrastructure. No real patient, employee or client content was introduced.

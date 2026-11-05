@@ -44,7 +44,7 @@ test("migration replay, transaction rollback and live WAL snapshot restore retai
     app.investigator(actor("oren"), "quiet-buoy")[0].withdrawn,
     false,
   );
-  assert.equal(restored.get("SELECT count(*) n FROM migrations").n, 1);
+  assert.equal(restored.get("SELECT count(*) n FROM migrations").n, 2);
   assert.equal(restored.get("SELECT count(*) n FROM approvals").n, 2);
   assert.throws(() =>
     execFileSync(process.execPath, ["scripts/backup.mjs", source, backup], {

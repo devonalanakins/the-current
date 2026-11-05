@@ -33,6 +33,7 @@ export interface Evidence {
   version: number;
   state: string;
   revision: number;
+  prepared_by: string | null;
 }
 export interface Invitation {
   id: string;
@@ -306,6 +307,11 @@ export class Current {
             v.id,
           );
           this.updateAssets(v.id);
+          this.store.run(
+            "INSERT OR IGNORE INTO version_contributors VALUES(?,?)",
+            v.id,
+            actor.id,
+          );
         } else if (action === "assign") {
           this.approved(v);
           requireThat(
@@ -357,6 +363,14 @@ export class Current {
           } else if (action === "approve") {
             requireThat(state === "IN_REVIEW");
             requireThat(v.author !== actor.id, 403);
+            requireThat(
+              !this.store.get(
+                "SELECT actor FROM version_contributors WHERE version=? AND actor=?",
+                v.id,
+                actor.id,
+              ),
+              403,
+            );
             state = "APPROVED";
             this.approval(actor, v, "content");
           } else if (action === "publish") {
@@ -404,9 +418,10 @@ export class Current {
           if (action === "prepare") {
             requireThat(!e);
             this.store.run(
-              "INSERT INTO evidence(briefing,version,state) VALUES(?,?,'READY_FOR_REVIEW')",
+              "INSERT INTO evidence(briefing,version,state,prepared_by) VALUES(?,?,'READY_FOR_REVIEW',?)",
               b.id,
               v.id,
+              actor.id,
             );
             this.store.run(
               "UPDATE briefings SET revision=revision+1 WHERE id=?",
@@ -415,7 +430,16 @@ export class Current {
           }
           if (action === "approve-evidence") {
             requireThat(e?.state === "READY_FOR_REVIEW");
+            requireThat(e.prepared_by && e.prepared_by !== actor.id, 403);
             requireThat(v.author !== actor.id, 403);
+            requireThat(
+              !this.store.get(
+                "SELECT actor FROM version_contributors WHERE version=? AND actor=?",
+                v.id,
+                actor.id,
+              ),
+              403,
+            );
             this.approval(actor, v, "evidence");
             this.store.run(
               "UPDATE evidence SET state='APPROVED_FOR_RELEASE',revision=revision+1 WHERE briefing=?",
@@ -503,7 +527,7 @@ export class Current {
             state = "ACTIVE";
             running = now();
           } else if (action === "next" || action === "previous") {
-            requireThat(["ACTIVE", "PAUSED"].includes(state));
+            requireThat(state === "ACTIVE");
             stage = Math.max(
               0,
               Math.min(5, stage + (action === "next" ? 1 : -1)),
@@ -517,7 +541,7 @@ export class Current {
             );
             revealed = 1;
           } else if (action === "complete") {
-            requireThat(["ACTIVE", "PAUSED"].includes(state) && stage === 5);
+            requireThat(state === "ACTIVE" && stage === 5);
             if (running) elapsed += Math.max(0, now() - running);
             running = null;
             state = "COMPLETED";

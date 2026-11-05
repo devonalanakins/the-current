@@ -35,14 +35,37 @@ export class Store {
     this.db.exec(
       "CREATE TABLE IF NOT EXISTS migrations(version INTEGER PRIMARY KEY)",
     );
-    if (
-      !this.get<{ version: number }>(
-        "SELECT version FROM migrations WHERE version=1",
-      )
-    )
-      this.transaction(() =>
-        this.db.exec(readFileSync("migrations/001-initial.sql", "utf8")),
+    const files = ["001-initial.sql", "002-evidence-preparer.sql"];
+    this.transaction(() => {
+      if (this.get("SELECT version FROM migrations WHERE version NOT IN (1,2)"))
+        throw new Error(
+          "Unsupported database schema. Use the matching application release.",
+        );
+      this.db.exec(
+        "CREATE TABLE IF NOT EXISTS migration_integrity(version INTEGER PRIMARY KEY, digest TEXT NOT NULL)",
       );
+      for (const [index, file] of files.entries()) {
+        const version = index + 1;
+        const sql = readFileSync("migrations/" + file, "utf8");
+        const digest = hash(sql);
+        const recorded = this.get<{ digest: string }>(
+          "SELECT digest FROM migration_integrity WHERE version=?",
+          version,
+        );
+        if (recorded && recorded.digest !== digest)
+          throw new Error("Migration checksum mismatch.");
+        if (
+          !this.get("SELECT version FROM migrations WHERE version=?", version)
+        )
+          this.db.exec(sql);
+        if (!recorded)
+          this.run(
+            "INSERT INTO migration_integrity VALUES(?,?)",
+            version,
+            digest,
+          );
+      }
+    });
   }
   get<T>(sql: string, ...params: (string | number | null)[]): T | undefined {
     return this.db.prepare(sql).get(...params) as T | undefined;

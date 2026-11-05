@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { DatabaseSync } from "node:sqlite";
-import { existsSync, chmodSync, realpathSync } from "node:fs";
+import { existsSync, chmodSync, realpathSync, statSync } from "node:fs";
 import { resolve, dirname } from "node:path";
+process.umask(0o077);
 const [source, destination] = process.argv.slice(2);
 if (!source || !destination || existsSync(destination))
   throw new Error(
@@ -9,10 +10,13 @@ if (!source || !destination || existsSync(destination))
   );
 if (
   realpathSync(source) === resolve(destination) ||
-  !existsSync(dirname(resolve(destination)))
+  !existsSync(dirname(resolve(destination))) ||
+  realpathSync(dirname(resolve(destination))) !==
+    dirname(resolve(destination)) ||
+  statSync(dirname(resolve(destination))).mode & 0o077
 )
   throw new Error("Use an existing private backup directory and a new file.");
-const db = new DatabaseSync(source);
+const db = new DatabaseSync(source, { readOnly: true });
 db.prepare("VACUUM INTO ?").run(resolve(destination));
 db.close();
 chmodSync(destination, 0o600);

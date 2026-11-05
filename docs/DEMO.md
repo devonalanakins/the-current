@@ -13,7 +13,7 @@ Use the README installation commands and fresh local credentials. All identities
 9. **Oren:** refresh the Evidence Desk. The exact released version now appears with chronology, original illustration, fictional evidence, resolution and a printable export. The browser's native print dialog can save a PDF. No server PDF service is involved.
 10. **Optional correction rehearsal:** Rowan creates a new draft from the published version, edits it, and requests review. Ellis approves and publishes that distinct version. Rowan creates a **synthetic rehearsal** for that version and an existing facilitator grant. Repeat the deliberate runner/evidence sequence. The newer release visibly supersedes the old one; historical evidence is retained. Existing briefings remain pinned to their old versions.
 
-To replay from a clean slate, stop the server and use a **new database path**, preserving prior data rather than deleting it. Run `CURRENT_DB=data/replay.sqlite npm run seed` after moving the previous `data/demo-credentials.json` into a private local location; the credential file intentionally refuses overwrites. Then `CURRENT_DB=data/replay.sqlite npm start`. Never use real appointment or employee data in this candidate.
+To replay from a clean slate, stop the server and use a **new database path**, preserving prior data rather than deleting it. Run `CURRENT_DB=data/replay-02/current.sqlite npm run seed` in a new private directory; the per-environment credential file intentionally refuses overwrites. Then `CURRENT_DB=data/replay-02/current.sqlite npm start`. Never use real appointment or employee data in this candidate.
 
 ## Failure rehearsal
 

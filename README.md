@@ -50,3 +50,7 @@ Tests create isolated random credentials and disposable databases, exercise real
 - Original proposed design contracts: [experience V0.3](docs/experience-v0.3.md), [authorization V0.3](docs/authorization-and-release-v0.3.md), [visual V0.3](docs/visual-system-v0.3.md). These are preserved proposals; the implementation reconciliation is in the architecture document.
 
 AGPL-3.0-only. See [LICENSE](LICENSE). Original software and synthetic fiction do not grant rights to any client or third-party materials. Source repository: <https://github.com/devonalanakins/the-current>.
+
+## G1.5 private-review continuation
+
+[Private review operations](docs/PRIVATE-REVIEW.md) documents the isolated staging package, environment validation, encrypted recovery, approval-contributor protections and no-coaching test. Startup now requires an existing database; seed creates a new isolated DB and a private credential handoff beside it. PR #2 remains unmerged; no host or public endpoint is provisioned.

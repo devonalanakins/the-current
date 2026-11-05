@@ -1000,3 +1000,99 @@ select:focus-visible {
 .brand {
   flex-shrink: 0;
 }
+
+/* Briefing controls stay readable during a portrait, one-handed rehearsal. */
+.session-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  margin-top: 20px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+.session-status strong,
+.session-status span:not(.clock) {
+  display: block;
+}
+.session-status strong {
+  font-size: 15px;
+}
+.session-status span:not(.clock) {
+  font-size: 13px;
+  color: var(--secondary);
+}
+#moment {
+  scroll-margin-top: 120px;
+}
+#moment:focus {
+  outline: none;
+}
+button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.check {
+  min-height: 44px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+#connection {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+#connection a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+@media (max-width: 767px) {
+  .session-status {
+    position: sticky;
+    top: 8px;
+    z-index: 2;
+    padding: 12px 14px;
+    box-shadow: 0 8px 24px #12383d14;
+  }
+  .session-status strong {
+    font-size: 14px;
+  }
+  .session-status .clock {
+    min-width: 78px;
+    font-size: 25px;
+  }
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  header {
+    padding-top: max(23px, env(safe-area-inset-top));
+  }
+}
+@media print {
+  .session-status,
+  #activity {
+    display: none;
+  }
+}
+@media (max-width: 767px) {
+  .briefing-intro h1 {
+    font-size: 34px;
+    letter-spacing: -1px;
+  }
+  .briefing-intro .lede {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  .next-card .mini-scene {
+    height: 115px;
+  }
+}

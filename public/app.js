@@ -39,7 +39,12 @@ for (const button of document.querySelectorAll("[data-print]"))
   button.addEventListener("click", () => window.print());
 const connection = document.querySelector("#connection");
 const updateConnection = () => {
-  if (connection) connection.hidden = navigator.onLine;
+  if (connection) {
+    connection.hidden = navigator.onLine;
+    if (!navigator.onLine)
+      connection.querySelector("span").textContent =
+        "You are offline. Your last confirmed progress is saved. Reconnect before continuing.";
+  }
 };
 window.addEventListener("online", updateConnection);
 window.addEventListener("offline", updateConnection);
@@ -47,4 +52,32 @@ updateConnection();
 // A history traversal must revalidate access; never restore a privileged DOM from bfcache.
 window.addEventListener("pageshow", (event) => {
   if (event.persisted) location.reload();
+});
+
+// Native forms remain usable without JavaScript. Never queue or replay offline actions.
+for (const form of document.querySelectorAll('form[method="post"]')) {
+  form.addEventListener("submit", (event) => {
+    if (!navigator.onLine) {
+      event.preventDefault();
+      updateConnection();
+      return;
+    }
+    if (form.dataset.submitting) {
+      event.preventDefault();
+      return;
+    }
+    form.dataset.submitting = "true";
+    document.querySelector("#activity").textContent =
+      "Saving. Wait for confirmation.";
+    for (const button of form.querySelectorAll("button"))
+      button.disabled = true;
+  });
+}
+if (location.hash === "#moment") document.querySelector("#moment")?.focus();
+window.addEventListener("online", () => {
+  if (connection) {
+    connection.hidden = false;
+    connection.querySelector("span").textContent =
+      "Connection restored. Reload your saved state before continuing.";
+  }
 });

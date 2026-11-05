@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { createServer, type IncomingMessage } from "node:http";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { runtimeConfig, bindEnvironment, preflightDatabase } from "./config.js";
 import { pathToFileURL } from "node:url";
 import { Store, hash, token, now, verifyPassword, password } from "./store.js";
 import {
@@ -69,6 +70,7 @@ export function application(store: Store, config: Config) {
     );
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "same-origin");
+    res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
     res.setHeader("X-Frame-Options", "DENY");
     res.setHeader(
       "Permissions-Policy",
@@ -94,7 +96,7 @@ export function application(store: Store, config: Config) {
       requireThat(url.origin === config.origin, 400);
       const path = url.pathname;
       const c = cookies(req);
-      if (c.current) {
+      if (c.current && path !== "/health") {
         const login = store.get<{ user_id: string; csrf: string }>(
           "SELECT user_id,csrf FROM logins WHERE token_hash=? AND expires>?",
           hash(c.current),
@@ -267,7 +269,7 @@ export function application(store: Store, config: Config) {
               "abort",
               "revoke-invites",
             ].includes(data.action)
-              ? "/run/" + encodeURIComponent(data.id)
+              ? "/run/" + encodeURIComponent(data.id) + "#moment"
               : "/workspace",
           );
         }
@@ -286,8 +288,19 @@ export function application(store: Store, config: Config) {
           200,
           "text/javascript; charset=utf-8",
         );
-      if (path === "/health")
-        return send('{"status":"ok"}', 200, "application/json");
+      if (path === "/health") {
+        try {
+          requireThat(
+            store.get<{ version: number }>(
+              "SELECT version FROM migrations WHERE version=1",
+            ),
+            503,
+          );
+          return send('{"status":"ok"}', 200, "application/json");
+        } catch {
+          return send('{"status":"unavailable"}', 503, "application/json");
+        }
+      }
       if (path === "/favicon.ico") {
         res.writeHead(204);
         return res.end();
@@ -497,8 +510,15 @@ export function application(store: Store, config: Config) {
       send(
         layout(
           "Unable to continue",
-          intro("PLEASE CHECK", "Let’s find the way back.", fault.message) +
-            `<section class="letter"><p>Status ${fault.status}. No successful action is implied.</p><a class="button" href="${actor ? "/workspace" : "/login"}">${actor ? "Return to workspace" : "Sign in"}</a><p>For an invitation, reopen the link provided by your organizer. Do not share private workspace screens.</p></section>`,
+          fault.status === 410 && !actor
+            ? intro(
+                "YOUR INVITATION",
+                "This invitation has closed.",
+                fault.message,
+              ) +
+                `<section class="letter"><h2>There is still a way in.</h2><p>Ask the organizer who sent your link for a replacement. Your invitation does not require an account.</p><a class="button" href="/open">Open a replacement invitation</a></section>`
+            : intro("PLEASE CHECK", "Let’s find the way back.", fault.message) +
+                `<section class="letter"><p>No successful action is implied. Reload your last confirmed state before continuing.</p><a class="button" href="${actor ? "/workspace" : "/login"}">${actor ? "Return to workspace" : "Sign in"}</a><p>For an invitation, reopen the link provided by your organizer.</p></section>`,
           actor,
         ),
         fault.status,
@@ -510,35 +530,48 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  const origin = process.env.CURRENT_ORIGIN ?? "http://127.0.0.1:3000";
-  const secure = new URL(origin).protocol === "https:";
-  const host = process.env.CURRENT_HOST ?? "127.0.0.1";
-  if (process.env.NODE_ENV === "production" && !secure)
+  process.umask(0o077);
+  const config = runtimeConfig();
+  if (!existsSync(config.database))
     throw new Error(
-      "Production requires a configured HTTPS origin and reverse proxy.",
+      "Database does not exist. Provision the intended environment before startup.",
     );
-  if (!secure && !["127.0.0.1", "localhost"].includes(new URL(origin).hostname))
-    throw new Error("Plain HTTP is limited to localhost.");
-  const store = new Store(process.env.CURRENT_DB ?? "data/current.sqlite");
+  preflightDatabase(config);
+  const store = new Store(config.database);
+  bindEnvironment(store, config);
   if (
-    process.env.NODE_ENV === "production" &&
-    store.get("SELECT id FROM organizations WHERE id='demo-org'")
+    Object.values(store.get("PRAGMA quick_check") ?? {})[0] !== "ok" ||
+    store.all("PRAGMA foreign_key_check").length
   )
-    throw new Error("Synthetic demonstration is blocked in production mode.");
+    throw new Error(
+      "Database integrity check failed. Restore to a new isolated path.",
+    );
+  const { origin, secure, host, port } = config;
   const server = application(store, { origin, secure });
   server.requestTimeout = 15000;
   server.headersTimeout = 10000;
   server.maxHeadersCount = 50;
-  server.listen(Number(process.env.PORT ?? 3000), host, () =>
+  server.listen(port, host, () =>
     console.log(
       `The Current local listener: ${origin}. Synthetic preview; no messages are sent.`,
     ),
   );
+  server.on("error", () => {
+    console.error("listener_failed");
+    store.close();
+    process.exitCode = 1;
+  });
   for (const signal of ["SIGTERM", "SIGINT"])
-    process.on(signal, () =>
+    process.on(signal, () => {
+      const deadline = setTimeout(() => {
+        server.closeAllConnections();
+      }, 5000);
+      deadline.unref();
       server.close(() => {
+        clearTimeout(deadline);
         store.close();
         process.exit(0);
-      }),
-    );
+      });
+      server.closeIdleConnections();
+    });
 }

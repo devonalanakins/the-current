@@ -37,6 +37,7 @@ test("four audiences complete the real lifecycle; responsive, keyboard, recovery
   async function capture(page, name) {
     for (const width of [320, 390, 430, 768, 1024, 1440, 1920]) {
       await page.setViewportSize({ width, height: 900 });
+      await page.evaluate(() => scrollTo(0, 0));
       await page.screenshot({
         path: `artifacts/ui/${info.project.name}/${name}-${width}.png`,
         fullPage: true,
@@ -59,6 +60,14 @@ test("four audiences complete the real lifecycle; responsive, keyboard, recovery
           })),
         ),
       ).toEqual([]);
+      const smallTargets = await page
+        .locator("button:visible, .button:visible")
+        .evaluateAll((nodes) =>
+          nodes
+            .filter((n) => n.getBoundingClientRect().height < 44)
+            .map((n) => n.textContent),
+        );
+      expect(smallTargets).toEqual([]);
       evidence.push({ name, width, violations: audit.violations.length });
     }
   }
@@ -72,6 +81,7 @@ test("four audiences complete the real lifecycle; responsive, keyboard, recovery
       .getByRole("button", { name: "Request content review", exact: true })
       .click();
     pages.approver = await signIn("ellis");
+    await capture(pages.approver, "review-pending");
     await pages.approver
       .getByRole("button", { name: "Approve exact story version" })
       .click();
@@ -139,6 +149,28 @@ test("four audiences complete the real lifecycle; responsive, keyboard, recovery
     await expect(
       pages.facilitator.getByRole("heading", { name: "KEEP", exact: true }),
     ).toBeVisible();
+    await capture(pages.facilitator, "runner-paused");
+    await expect(
+      pages.facilitator.getByRole("button", {
+        name: "Next stage",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await pages.facilitator.context().setOffline(true);
+    await expect(pages.facilitator.locator("#connection")).toContainText(
+      "You are offline",
+    );
+    await pages.facilitator
+      .getByRole("button", { name: "Resume briefing", exact: true })
+      .click();
+    expect(f.app.briefing("demo-briefing").state).toBe("PAUSED");
+    await pages.facilitator.context().setOffline(false);
+    await expect(pages.facilitator.locator("#connection")).toContainText(
+      "Connection restored",
+    );
+    await pages.facilitator
+      .getByRole("link", { name: "Reload saved state" })
+      .click();
     await pages.facilitator
       .getByRole("button", { name: "Resume briefing", exact: true })
       .click();
@@ -174,6 +206,7 @@ test("four audiences complete the real lifecycle; responsive, keyboard, recovery
     await pages.facilitator
       .getByRole("button", { name: "Confirm: reveal fictional clue" })
       .click();
+    await capture(pages.facilitator, "runner-revealed");
     await display.reload();
     await expect(
       display.getByText("Maintenance slate · 21:40.", { exact: false }),
@@ -186,6 +219,7 @@ test("four audiences complete the real lifecycle; responsive, keyboard, recovery
     await pages.facilitator
       .getByRole("button", { name: "Complete briefing", exact: true })
       .click();
+    await capture(pages.facilitator, "runner-completed");
     await pages.investigator.reload();
     await expect(
       pages.investigator.getByText("No fictional evidence has been released", {
@@ -217,6 +251,25 @@ test("four audiences complete the real lifecycle; responsive, keyboard, recovery
     await expect(
       pages.investigator.getByText("not sabotage", { exact: false }),
     ).toBeVisible();
+    await pages.investigator.emulateMedia({ media: "print" });
+    await expect(
+      pages.investigator.getByRole("button", { name: "Print or save as PDF" }),
+    ).toBeHidden();
+    await pages.investigator.screenshot({
+      path: `artifacts/ui/${info.project.name}/evidence-print.png`,
+      fullPage: true,
+    });
+    await pages.facilitator.goto(origin + "/run/demo-briefing");
+    await pages.facilitator
+      .getByRole("button", { name: "Withdraw all links" })
+      .click();
+    await pages.participant.reload();
+    await expect(
+      pages.participant.getByRole("heading", {
+        name: "This invitation has closed.",
+      }),
+    ).toBeVisible();
+    await capture(pages.participant, "invitation-withdrawn");
     expect(errors).toEqual([]);
     writeFileSync(
       `artifacts/ui/${info.project.name}/results.json`,
@@ -233,6 +286,53 @@ test("four audiences complete the real lifecycle; responsive, keyboard, recovery
     );
   } finally {
     for (const c of contexts) await c.close();
+    await new Promise((r) => server.close(r));
+    f.store.close();
+  }
+});
+
+test("native keyboard sign-in and text-only invitation work without JavaScript", async ({
+  browser,
+}) => {
+  const { publish, command } = await import("../helpers.mjs");
+  const f = fixture();
+  publish(f);
+  const raw = command(f, "mira", "invite", "demo-briefing").issued;
+  const config = { origin: "http://127.0.0.1", secure: false };
+  const server = application(f.store, config);
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  config.origin = `http://127.0.0.1:${server.address().port}`;
+  const context = await browser.newContext({
+    javaScriptEnabled: false,
+    viewport: { width: 390, height: 844 },
+  });
+  try {
+    const page = await context.newPage();
+    await page.goto(config.origin + "/login");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await expect(page.getByLabel("Username", { exact: true })).toBeFocused();
+    await page.keyboard.type("rowan");
+    await page.keyboard.press("Tab");
+    await page.keyboard.type(f.credentials.rowan);
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Enter");
+    await expect(
+      page.getByRole("heading", { name: "Make the story ready." }),
+    ).toBeVisible();
+    await page.goto(config.origin + "/open");
+    await page.getByLabel("Invitation credential").fill(raw);
+    await page.getByRole("button", { name: "Open my invitation" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Something changed with the tide." }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Read the illustrated teaser", { exact: true }),
+    ).toBeVisible();
+    expect(await page.content()).not.toContain("Mara Vale");
+  } finally {
+    await context.close();
     await new Promise((r) => server.close(r));
     f.store.close();
   }
