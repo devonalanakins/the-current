@@ -33,6 +33,8 @@ The browser suite uses fresh isolated identities and real native forms from prod
 - **Serious accessibility:** brand's custom accessible label excluded its visible tagline. The override was removed; the visible text supplies the accessible name. Axe rerun is required on the candidate.
 - **Workflow:** runner actions initially returned to the home screen. Actions now keep the facilitator in the persisted runner.
 - **Dependency:** initially resolved development lint tooling included a minimatch glob amplification advisory. A patched override was installed and lockfile audit rerun. There are no runtime npm dependencies.
+- **Concurrency:** sensitive authority/version reads now occur inside the SQLite writer transaction; independent OS-process races and HTTP retries verify a single release.
+- **Media recovery:** an image failure could precede the deferred script error listener. Initialization now checks already-completed failed images too; a delayed-script browser regression verifies the fallback.
 - **Local data protection:** SQLite files are explicitly mode 0600, including when an existing directory is used. Demo credential preflight refuses an existing handoff file before mutating a fresh seed.
 
 ## Remaining limitations and gates
